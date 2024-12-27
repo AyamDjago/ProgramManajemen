@@ -5,18 +5,19 @@ import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class SimpleInventoryManagement {
+// Class for CRUD operations
+class InventoryCRUD {
     private static final String DB_URL = "jdbc:sqlite:inventory.db";
-    private static JTable table;
-    private static DefaultTableModel tableModel;
 
-    public static void main(String[] args) {
+    static {
         createTable();
-        createGUI();
     }
 
     private static void createTable() {
-        String sql = "CREATE TABLE IF NOT EXISTS inventory (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, quantity INTEGER NOT NULL, description TEXT, created_at TEXT, updated_at TEXT)";
+        String sql = "CREATE TABLE IF NOT EXISTS inventory " +
+                "(id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "name TEXT NOT NULL, quantity INTEGER NOT NULL, " +
+                "description TEXT, created_at TEXT, updated_at TEXT)";
         try (Connection conn = DriverManager.getConnection(DB_URL); Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
@@ -24,7 +25,7 @@ public class SimpleInventoryManagement {
         }
     }
 
-    private static void addItem(String name, int quantity, String description) {
+    public static void addItem(String name, int quantity, String description) {
         String sql = "INSERT INTO inventory(name, quantity, description, created_at, updated_at) VALUES(?, ?, ?, ?, ?)";
         String currentDate = getCurrentDate();
         try (Connection conn = DriverManager.getConnection(DB_URL); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -35,13 +36,12 @@ public class SimpleInventoryManagement {
             pstmt.setString(5, currentDate);
             pstmt.executeUpdate();
             showInfo("Item added successfully!");
-            refreshTable();
         } catch (SQLException e) {
             showError(e.getMessage());
         }
     }
 
-    private static void updateItem(int id, String name, int quantity, String description) {
+    public static void updateItem(int id, String name, int quantity, String description) {
         String sql = "UPDATE inventory SET name = ?, quantity = ?, description = ?, updated_at = ? WHERE id = ?";
         String currentDate = getCurrentDate();
         try (Connection conn = DriverManager.getConnection(DB_URL); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -52,25 +52,23 @@ public class SimpleInventoryManagement {
             pstmt.setInt(5, id);
             pstmt.executeUpdate();
             showInfo("Item updated successfully!");
-            refreshTable();
         } catch (SQLException e) {
             showError(e.getMessage());
         }
     }
 
-    private static void deleteItem(int id) {
+    public static void deleteItem(int id) {
         String sql = "DELETE FROM inventory WHERE id = ?";
         try (Connection conn = DriverManager.getConnection(DB_URL); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
             showInfo("Item deleted successfully!");
-            refreshTable();
         } catch (SQLException e) {
             showError(e.getMessage());
         }
     }
 
-    private static void refreshTable() {
+    public static void fetchItems(DefaultTableModel tableModel) {
         tableModel.setRowCount(0);
         String sql = "SELECT * FROM inventory";
         try (Connection conn = DriverManager.getConnection(DB_URL); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
@@ -82,12 +80,27 @@ public class SimpleInventoryManagement {
         }
     }
 
+    private static String getCurrentDate() {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return formatter.format(new Date());
+    }
+
     private static void showInfo(String message) {
         JOptionPane.showMessageDialog(null, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private static void showError(String message) {
         JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+}
+
+// Class for GUI
+public class InventoryGUI {
+    private static JTable table;
+    private static DefaultTableModel tableModel;
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(InventoryGUI::createGUI);
     }
 
     private static void createGUI() {
@@ -116,7 +129,8 @@ public class SimpleInventoryManagement {
             try {
                 int quantity = Integer.parseInt(quantityField.getText());
                 String description = descriptionField.getText();
-                addItem(name, quantity, description);
+                InventoryCRUD.addItem(name, quantity, description);
+                refreshTable();
             } catch (NumberFormatException ex) {
                 showError("Quantity must be a valid number.");
             }
@@ -128,7 +142,8 @@ public class SimpleInventoryManagement {
                 String name = nameField.getText();
                 int quantity = Integer.parseInt(quantityField.getText());
                 String description = descriptionField.getText();
-                updateItem(id, name, quantity, description);
+                InventoryCRUD.updateItem(id, name, quantity, description);
+                refreshTable();
             } catch (NumberFormatException ex) {
                 showError("ID and Quantity must be valid numbers.");
             }
@@ -137,7 +152,8 @@ public class SimpleInventoryManagement {
         deleteButton.addActionListener(e -> {
             try {
                 int id = Integer.parseInt(idField.getText());
-                deleteItem(id);
+                InventoryCRUD.deleteItem(id);
+                refreshTable();
             } catch (NumberFormatException ex) {
                 showError("ID must be a valid number.");
             }
@@ -190,8 +206,11 @@ public class SimpleInventoryManagement {
         frame.setVisible(true);
     }
 
-    private static String getCurrentDate() {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        return formatter.format(new Date());
+    private static void refreshTable() {
+        InventoryCRUD.fetchItems(tableModel);
+    }
+
+    private static void showError(String message) {
+        JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 }
